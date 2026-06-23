@@ -1,0 +1,20 @@
+# Core (same as Single AI Agent Layer)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29.0
+pydantic>=2.0
+numpy>=1.24
+python-dotenv>=1.0
+
+# MCP & Multi-agent
+httpx>=0.28.0
+
+# LLM backends (optional — import errors are handled gracefully)
+openai>=1.0
+anthropic>=0.30.0
+
+# Testing
+pytest>=8.0
+pytest-asyncio>=0.24.0
+aiosqlite>=0.20.0

@@ -1,0 +1,78 @@
+# =============================================================================
+# Multi-AI Agent Layer — Docker Compose
+#
+# Services:
+#   db          — PostgreSQL 16 (Alpine) for agent state persistence
+#   multi_agent — FastAPI multi-agent service (port 8000)
+#
+# Usage:
+#   docker compose up --build
+#   # OpenAPI docs at http://localhost:8000/docs
+# =============================================================================
+
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agent_layer
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_layer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  multi_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/agent_layer"
+      MULTI_AGENT_DB_URL: "postgresql+asyncpg://postgres:postgres@db:5432/agent_layer"
+
+      # Application
+      APP_TITLE: "Multi AI Agent Layer"
+      APP_VERSION: "2.0.0"
+      CORS_ORIGINS: "*"
+
+      # MCP
+      MCP_ENABLED: "true"
+      MCP_MEMORY_MAX_ENTRIES: "1000"
+      MCP_DEFAULT_TTL_SECONDS: "3600"
+
+      # Skills
+      SKILLS_ENABLED: "anomaly_detector,advanced_trend_analyzer,llm_advice_generator"
+      ANOMALY_DETECTOR_ZSCORE_THRESHOLD: "2.5"
+      ANOMALY_DETECTOR_WINDOW: "30"
+      ADVANCED_TREND_WINDOWS: "5,10,30,60"
+      FORECAST_HORIZON: "5"
+
+      # LLM (opt-in — set LLM_BACKEND and LLM_API_KEY to enable)
+      LLM_BACKEND: "${LLM_BACKEND:-none}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_MODEL: "${LLM_MODEL:-gpt-4o}"
+      LLM_MAX_TOKENS: "512"
+      LLM_TEMPERATURE: "0.3"
+
+      # Agent coordination
+      AGENT_COORDINATOR_MAX_WORKERS: "4"
+      AGENT_TIMEOUT_SECONDS: "10.0"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
