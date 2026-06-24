@@ -79,32 +79,77 @@
 
 ```
 Multi_AI_Agent_layer/
-├── __init__.py                    # Package init, version 2.0.0
-├── config.py                      # Extended env-var configuration
-├── database.py                    # Separate MultiBase engine + session
-├── models.py                      # 5 new ORM models (Multi-layer tables)
-├── schemas.py                     # Extended Pydantic v2 schemas
-├── main.py                        # FastAPI app factory (21 endpoints)
-├── mcp_server.py                  # MCP orchestration (Memory/Control/Planning)
-├── agent_coordinator.py           # Multi-agent fan-out/fan-in coordinator
+├── run.py                          # Launcher — python run.py
+├── __init__.py                     # Package init, version 2.0.0
+├── _ensure_imports.py              # Forces Multi modules into sys.modules
+├── base.py                         # MultiBase (separate DeclarativeBase)
+├── config.py                       # Re-exports Single config + Multi keys
+├── database.py                     # MultiBase engine + Single DB re-exports
+├── models.py                       # 5 new ORM models + Single model re-exports
+├── schemas.py                      # Multi schemas + Single schema re-exports
+├── main.py                         # FastAPI app factory (21 endpoints)
+├── mcp_server.py                   # MCP orchestration (Memory/Control/Planning)
+├── agent_coordinator.py            # Multi-agent fan-out/fan-in coordinator
 ├── skills/
 │   ├── __init__.py
-│   ├── anomaly_detector.py        # Rolling z-score anomaly detection
-│   ├── advanced_trend_analyzer.py # Multi-timescale trend + forecasting
-│   └── llm_advice_generator.py    # Configurable LLM advice enrichment
+│   ├── anomaly_detector.py         # Rolling z-score anomaly detection
+│   ├── advanced_trend_analyzer.py  # Multi-timescale trend + forecasting
+│   └── llm_advice_generator.py     # Configurable LLM advice enrichment
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
+├── PROPOSAL.md                     # English proposal (groupmate-ready)
+├── PROPOSAL_CN.md                  # Chinese proposal (繁體中文)
 ├── README.md
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py
-│   ├── test_mcp_server.py
-│   ├── test_skills.py
-│   ├── test_agent_coordinator.py
-│   └── test_api.py
-└── intel multimodal (AI_Agent_Single_layer)/   ← Single layer (git sub-repo)
+│   ├── test_mcp_server.py          # 26 tests
+│   ├── test_skills.py              # 23 tests
+│   ├── test_agent_coordinator.py   # 13 tests
+│   └── test_api.py                 # 30 integration tests
+└── intel multimodal (AI_Agent_Single_layer)/   ← Single AI Agent Layer (v1)
+    ├── main.py                     # FastAPI app (create_app, 11 endpoints)
+    ├── agent_orchestrator.py       # HealthAgent (TrendAnalyzer + DecisionEngine + AdviceGenerator)
+    ├── config.py, database.py      # Single-layer configuration + DB
+    ├── models.py, schemas.py       # 4 ORM tables + Pydantic schemas
+    ├── tests/                      # 83 tests
+    └── intel multimodal (dashboard_and_alert_layer)/   ← Dashboard + Fusion
+        ├── dashboard_and_alert_layer/
+        │   ├── run.py              # Dashboard launcher (Flask :5000)
+        │   └── dashboard/
+        │       ├── backend/        # Flask + SocketIO backend
+        │       └── frontend/       # React frontend (:3000)
+        └── intel multimodal (fusion layer)/
+            ├── Fusion-Layer/       # MultimodalFusionEncoder (256-dim)
+            ├── intel multimodal (vision layer)/   # Swin-Tiny rPPG (768-dim)
+            ├── intel multimodal (audio layer)/    # AST (128-dim)
+            └── intel multimodal (physiological layer)/ # iTransformer (128-dim)
 ```
+
+---
+
+## Single AI Agent Layer (v1) — Included in this repo
+
+The **Single AI Agent Layer** is the foundation that the Multi layer builds upon.
+It is included as a nested directory and provides:
+
+| Component | Role |
+|-----------|------|
+| **HealthAgent** | Central orchestrator wrapping TrendAnalyzer + DecisionEngine + AdviceGenerator |
+| **TrendAnalyzer** | Rolling buffer (20 obs), degrading/improving/stable classification, numpy.polyfit slopes |
+| **DecisionEngine** | 11 priority-ordered clinical decision rules, first-match-wins, dynamic CRUD |
+| **AdviceGenerator** | Template-based structured health advice (severity + condition + actions) |
+| **11 REST endpoints** | `/api/v1/tick`, `/advice`, `/trends`, `/rules`, `/status`, `/health` |
+| **PostgreSQL** | 4 tables: observations, advice_log, decision_rules, trend_snapshots |
+| **83 tests** | Unit + integration (aiosqlite) |
+
+The Multi layer **wraps** the Single layer — it imports `HealthAgent` and calls
+`process_tick()` on every request, then adds anomaly detection, multi-scale
+trends, LLM enrichment, and multi-agent coordination on top. All 11 Single-layer
+endpoints are **preserved unchanged** under `/api/v1`.
+
+> **GitHub:** [Intel-Cup-Multimodal-Single-AI-Agent-Layer](https://github.com/CHANSingYeungSunny/Intel-Cup-Multimodal-Single-AI-Agent-Layer)
 
 ---
 
