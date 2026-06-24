@@ -1,0 +1,30 @@
+# Datasets — too large for git (~30 GB audio + ~2.7 GB cache)
+datasets/
+
+# Training logs (auto-generated, not needed)
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Mel spectrogram cache
+mel_cache/

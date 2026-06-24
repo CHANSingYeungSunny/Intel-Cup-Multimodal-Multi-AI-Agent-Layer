@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Cache (regeneratable .pt files from upstream CSVs)
+cache/
+
+# Logs and TensorBoard runs
+logs/
+runs/
+
+# Only exclude per-experiment intermediate checkpoints
+# Keep final deliverables: best_fusion.pt, predictions.csv, etc.
+outputs/best_fusion_exp*.pt
+outputs/predictions_exp*.csv
+outputs/fusion_training_curves_exp*.png
+outputs/fusion_confusion_matrix_exp*.png

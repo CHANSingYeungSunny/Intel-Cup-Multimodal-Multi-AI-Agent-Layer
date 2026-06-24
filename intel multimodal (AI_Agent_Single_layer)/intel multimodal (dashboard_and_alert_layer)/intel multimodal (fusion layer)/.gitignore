@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+
+# Cache directories
+cache/
+**/cache/
+**/frame_cache/
+
+# Logs
+logs/
+*.log
+**/logs/
+
+# TensorBoard runs
+runs/
+
+# Large datasets (not source code)
+**/datasets/
+**/bidmc-ppg-and-respiration-dataset-1.0.0/
+**/UBFC_rPPG/
+
+# Model weights (downloaded, not trained)
+*.tflite
+**/*.tflite
+**/yolov8s-worldv2.pt
+**/blaze_face_short_range.tflite
+
+# ONNX / OpenVINO exports
+**/onnx/
+**/openvino/
+
+# Per-experiment intermediate files
+**/outputs/*_exp*.pt
+**/outputs/*_exp*.csv
+**/outputs/*_exp*.png
+**/output/predictions/*_exp*
+**/output/checkpoints/*_exp*
+
+# Kernel errors
+**/kernel.errors.txt
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Git subfolders (each layer may have its own .git)
+**/.git/

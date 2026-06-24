@@ -22,9 +22,12 @@ env/
 .coverage
 htmlcov/
 
+# Node
+node_modules/
+
 # OS
 .DS_Store
 Thumbs.db
 
-# Nested Single AI Agent Layer (separate git repo — added as submodule)
-intel multimodal (AI_Agent_Single_layer)/
+# Temp files
+_pdf_text.txt

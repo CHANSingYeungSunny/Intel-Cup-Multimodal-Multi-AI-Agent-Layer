@@ -1,0 +1,30 @@
+# BIDMC-PPG dataset (large, not in repo)
+bidmc-ppg-and-respiration-dataset-1.0.0/
+
+# Cached window tensors (~96 MB)
+cache/
+
+# TensorBoard logs
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Per-experiment outputs (keep only final deliverables)
+outputs/best_physio_exp*.pt
+outputs/predictions_exp*.csv
+outputs/training_curves_exp*.png
+outputs/confusion_matrix_exp*.png
+
+# Original notebook & old root-level CSV (superseded by refactored project)
+/IntelCup2026.ipynb
+/experiment_results_with_accuracy.csv

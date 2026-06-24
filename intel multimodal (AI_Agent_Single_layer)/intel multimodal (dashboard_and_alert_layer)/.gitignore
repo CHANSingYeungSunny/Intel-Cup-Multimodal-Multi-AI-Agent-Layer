@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Node / React
+node_modules/
+dashboard_and_alert_layer/dashboard/frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TensorBoard / logs
+runs/
+logs/
+*.log
+
+# Cache
+cache/
+*.pt
+
+# Alert logs
+alert_log.txt
+
+# Environment
+.env
+.env.local
