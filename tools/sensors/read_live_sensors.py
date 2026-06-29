@@ -10,6 +10,12 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PYTHON = sys.executable
+SCD40_SCRIPT = "tools/sensors/test_scd40.py"
+MAX30102_SCRIPT = "tools/sensors/test_max30102.py"
+SCD40_TIMEOUT = 12
+MAX30102_TIMEOUT = 8
+SCD40_MAX_ATTEMPTS = 2
+SCD40_RETRY_DELAY_SECONDS = 0.35
 
 
 def run_json_script(script_path, timeout=15):
@@ -52,6 +58,69 @@ def run_json_script(script_path, timeout=15):
         return {
             "error": str(e),
         }
+
+
+def _scd40_unavailable_payload(error_message=None, attempts=1):
+    payload = {
+        "co2_ppm": None,
+        "temperature_c": None,
+        "humidity_percent": None,
+        "status": "temporarily_unavailable",
+    }
+
+    if error_message:
+        payload["error"] = error_message
+
+    payload["attempts"] = attempts
+    return payload
+
+
+def _extract_scd40_error(payload):
+    if isinstance(payload, dict):
+        nested = payload.get("scd40")
+        if isinstance(nested, dict) and nested.get("error"):
+            return str(nested.get("error"))
+        if payload.get("error"):
+            return str(payload.get("error"))
+    return "unknown_scd40_error"
+
+
+def _is_valid_scd40_payload(payload):
+    return isinstance(payload, dict) and all(
+        payload.get(key) is not None
+        for key in ("co2_ppm", "temperature_c", "humidity_percent")
+    )
+
+
+def _is_transient_scd40_error(error_message):
+    lower = (error_message or "").lower()
+    return (
+        "remote i/o error" in lower
+        or "errno 121" in lower
+        or "[errno 121]" in lower
+        or "resource temporarily unavailable" in lower
+    )
+
+
+def read_scd40_status():
+    last_error = None
+
+    for attempt in range(1, SCD40_MAX_ATTEMPTS + 1):
+        scd40_result = run_json_script(SCD40_SCRIPT, timeout=SCD40_TIMEOUT)
+        scd40_payload = scd40_result.get("scd40", scd40_result)
+
+        if _is_valid_scd40_payload(scd40_payload):
+            return scd40_payload
+
+        last_error = _extract_scd40_error(scd40_result)
+
+        if attempt < SCD40_MAX_ATTEMPTS and _is_transient_scd40_error(last_error):
+            time.sleep(SCD40_RETRY_DELAY_SECONDS)
+            continue
+
+        break
+
+    return _scd40_unavailable_payload(last_error, attempts=attempt)
 
 
 def read_camera_status():
@@ -110,12 +179,13 @@ def read_microphone_status():
             "error": str(e),
         }
 
+
 def main():
-    scd40_result = run_json_script("tools/sensors/test_scd40.py", timeout=12)
-    max30102_result = run_json_script("tools/sensors/test_max30102.py", timeout=8)
+    scd40_result = read_scd40_status()
+    max30102_result = run_json_script(MAX30102_SCRIPT, timeout=MAX30102_TIMEOUT)
 
     output = {
-        "scd40": scd40_result.get("scd40", scd40_result),
+        "scd40": scd40_result,
         "max30102": max30102_result.get("max30102", max30102_result),
         "mlx90614": {
             "detected": False,
