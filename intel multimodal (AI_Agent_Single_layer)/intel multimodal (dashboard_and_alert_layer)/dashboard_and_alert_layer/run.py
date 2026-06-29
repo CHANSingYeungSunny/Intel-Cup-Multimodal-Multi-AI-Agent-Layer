@@ -133,7 +133,7 @@ def main():
     if args.debug:
         socketio.run(app, host=args.host, port=args.port, debug=True)
     else:
-        socketio.run(app, host=args.host, port=args.port)
+        socketio.run(app, host=args.host, port=args.port, allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,76 @@
+Starting Flask Dashboard Backend...
+============================================================
+  Multimodal Health Monitoring — Dashboard & Alerts Layer
+============================================================
+
+[1/6] Loading Fusion Layer outputs...
+[DataStore] Loaded 92 predictions, 5 experiments
+      Active experiment: Exp 1 — g2.0_e30_d256_l4_b64_3class
+      Test accuracy: 71.7%
+
+[2/6] Fitting feature analyzer (PCA)...
+[FeatureAnalyzer] PCA fitted: 3 components, explained variance: [0.619, 0.147, 0.06]
+      Subjects: 44
+
+[3/6] Initializing alert system...
+[TelegramBot] DRY-RUN mode — set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to enable real messages
+[AlertManager] Initialized (state=NORMAL)
+      LED: simulated (console + log)
+      Buzzer: simulated (console + log)
+      Telegram: DRY-RUN mode
+
+[4/6] Using external AI Agent Layer at http://localhost:8000/api/v1
+      Agent advice will be fetched via HTTP POST /tick
+
+[5/6] Creating Flask + SocketIO application...
+
+[6/7] Starting health data simulator...
+[HealthSimulator] Started (interval=2.0s, shuffle=False)
+      Interval: 2.0s per sample
+
+============================================================
+  Server starting at http://0.0.0.0:5000
+  Dashboard: http://localhost:5000
+  API:       http://localhost:5000/api/health_state
+============================================================
+
+Press Ctrl+C to stop.
+
+Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
+ * Serving Flask app 'dashboard.backend.app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.137.84:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/experiments HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/health_state HTTP/1.1" 200 -
+[FeatureAnalyzer] PCA fitted: 3 components, explained variance: [0.619, 0.147, 0.06]
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/experiments HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/feature_viz?method=pca&components=2 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/disease_classification HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/health_state HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/disease_classification HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/feature_viz?method=pca&components=2 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:52:59] "GET /api/physio_trend?subject=subject1 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:00] "GET /api/cough_curve?subject=subject1 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "POST /api/experiments/switch/2 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/disease_classification HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/health_state HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/experiments HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/feature_viz?method=pca&components=2 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/cough_curve?subject=subject1 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/feature_viz?method=pca&components=2 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/health_history HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:02] "GET /api/physio_trend?subject=subject1 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Jun/2026 19:53:04] "[35m[1mGET /api/agent_advice HTTP/1.1[0m" 503 -
+127.0.0.1 - - [29/Jun/2026 19:53:09] "[35m[1mGET /api/agent_advice HTTP/1.1[0m" 503 -
+127.0.0.1 - - [29/Jun/2026 19:53:14] "[35m[1mGET /api/agent_advice HTTP/1.1[0m" 503 -

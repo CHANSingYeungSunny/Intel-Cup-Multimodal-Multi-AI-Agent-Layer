@@ -34,7 +34,7 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy Single AI Agent Layer (read-only dependency)
-COPY "intel multimodal (AI_Agent_Single_layer)" /app/single_layer/
+COPY ["intel multimodal (AI_Agent_Single_layer)", "/app/single_layer/"]
 
 # Copy Multi AI Agent Layer source
 COPY __init__.py .
