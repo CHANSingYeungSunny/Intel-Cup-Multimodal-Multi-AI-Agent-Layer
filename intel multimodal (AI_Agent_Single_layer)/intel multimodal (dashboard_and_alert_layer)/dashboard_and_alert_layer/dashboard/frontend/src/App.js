@@ -10,6 +10,12 @@ export default function App() {
   const socket = useSocket();
   const { data: experimentsData, refetch: refetchExperiments } = useApi(ENDPOINTS.experiments);
   const { data: healthData, refetch: refetchHealth } = useApi(ENDPOINTS.healthState);
+  const {
+    data: liveSensorsData,
+    loading: liveSensorsLoading,
+    error: liveSensorsError,
+    refetch: refetchLiveSensors,
+  } = useApi(ENDPOINTS.liveSensors);
   const { data: diseaseData, refetch: refetchDisease } = useApi(ENDPOINTS.diseaseClassification);
   const { data: agentAdviceData, loading: agentLoading, error: agentError, refetch: refetchAgent } = useApi(ENDPOINTS.agentAdvice);
 
@@ -44,6 +50,14 @@ export default function App() {
     }
   }, [socket.lastAgentAdvice]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refetchLiveSensors();
+    }, 20000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refetchLiveSensors]);
+
   const handleExperimentChange = useCallback(async (expId) => {
     setActiveExperimentId(expId);
     // Switch via REST first (reliable), then notify via socket
@@ -56,11 +70,12 @@ export default function App() {
     }
     // Refetch ALL data now that backend has switched
     refetchHealth();
+    refetchLiveSensors();
     refetchDisease();
     refetchExperiments();
     refetchAgent();
     setRefreshKey((k) => k + 1);
-  }, [socket, refetchHealth, refetchDisease, refetchExperiments, refetchAgent]);
+  }, [socket, refetchHealth, refetchLiveSensors, refetchDisease, refetchExperiments, refetchAgent]);
 
   const handleTestAlert = () => {
     socket.emit('request_alert_test');
@@ -110,6 +125,9 @@ export default function App() {
       <Dashboard
         key={refreshKey}
         healthData={healthData}
+        liveSensorsData={liveSensorsData}
+        liveSensorsLoading={liveSensorsLoading}
+        liveSensorsError={liveSensorsError}
         diseaseData={diseaseData}
         lastHealthUpdate={socket.lastHealthUpdate}
         alertLog={alertLog}

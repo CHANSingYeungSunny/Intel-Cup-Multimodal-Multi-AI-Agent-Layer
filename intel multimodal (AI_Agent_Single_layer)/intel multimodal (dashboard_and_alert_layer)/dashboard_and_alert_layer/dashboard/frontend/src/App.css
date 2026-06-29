@@ -163,6 +163,66 @@ body {
 }
 .dashboard-grid .full-width { grid-column: 1 / -1; }
 
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.sensor-tile {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  min-height: 128px;
+}
+.sensor-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.sensor-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.sensor-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.sensor-state {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.sensor-state.ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--healthy);
+}
+.sensor-state.warn {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--subhealthy);
+}
+.sensor-state.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--unhealthy);
+}
+.sensor-footer {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
 /* ---- Health State Card ---- */
 .health-state-card {
   display: flex;

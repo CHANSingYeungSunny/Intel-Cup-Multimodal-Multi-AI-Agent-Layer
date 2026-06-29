@@ -9,6 +9,9 @@ import AgentSuggestionsPanel from './AgentSuggestionsPanel';
 
 export default function Dashboard({
   healthData,
+  liveSensorsData,
+  liveSensorsLoading,
+  liveSensorsError,
   diseaseData,
   lastHealthUpdate,
   alertLog,
@@ -20,6 +23,17 @@ export default function Dashboard({
   socket,
   onTestAlert,
 }) {
+  const scd40 = liveSensorsData?.scd40 || {};
+  const mlx90614 = liveSensorsData?.mlx90614 || {};
+  const max30102 = liveSensorsData?.max30102 || {};
+  const camera = liveSensorsData?.camera || {};
+  const microphone = liveSensorsData?.microphone || {};
+  const max30102Detected = Boolean(max30102.detected);
+  const fingerPresent = Boolean(max30102.finger_present);
+  const irAvailable = Boolean(mlx90614.detected) && mlx90614.object_temperature_c != null;
+  const cameraDetected = Boolean(camera.detected);
+  const microphoneDetected = Boolean(microphone.detected);
+
   return (
     <div className="dashboard-grid">
       {/* Row 1: Health State (full width) */}
@@ -28,6 +42,77 @@ export default function Dashboard({
           healthData={healthData}
           lastUpdate={lastHealthUpdate}
         />
+      </div>
+
+      {/* Row 1.5: Live sensor snapshot (full width) */}
+      <div className="full-width">
+        <div className="card">
+          <div className="card-header">Live Sensor Snapshot</div>
+          {liveSensorsError ? (
+            <div className="error">{liveSensorsError}</div>
+          ) : liveSensorsLoading && !liveSensorsData ? (
+            <div className="loading">Loading live sensors...</div>
+          ) : (
+            <>
+              <div className="sensor-grid">
+                <SensorTile
+                  label="CO2 ppm"
+                  value={formatMetric(scd40.co2_ppm, 'ppm', 0)}
+                  detail="SCD40 /dev/i2c-1 @ 0x62"
+                  tone={scd40.co2_ppm != null ? 'ok' : 'warn'}
+                  status={scd40.co2_ppm != null ? 'Live' : 'Unavailable'}
+                />
+                <SensorTile
+                  label="Temperature"
+                  value={formatMetric(scd40.temperature_c, 'C', 1)}
+                  detail="Ambient from SCD40"
+                  tone={scd40.temperature_c != null ? 'ok' : 'warn'}
+                  status={scd40.temperature_c != null ? 'Live' : 'Unavailable'}
+                />
+                <SensorTile
+                  label="Humidity"
+                  value={formatMetric(scd40.humidity_percent, '%', 2)}
+                  detail="Ambient relative humidity"
+                  tone={scd40.humidity_percent != null ? 'ok' : 'warn'}
+                  status={scd40.humidity_percent != null ? 'Live' : 'Unavailable'}
+                />
+                <SensorTile
+                  label="IR object temp"
+                  value={irAvailable ? formatMetric(mlx90614.object_temperature_c, 'C', 1) : 'Unavailable'}
+                  detail={mlx90614.status || 'Sensor not detected'}
+                  tone={irAvailable ? 'ok' : 'warn'}
+                  status={irAvailable ? 'Live' : 'Unavailable'}
+                />
+                <SensorTile
+                  label="MAX30102"
+                  value={!max30102Detected ? 'Unavailable' : fingerPresent ? 'Finger detected' : 'No finger'}
+                  detail={!max30102Detected ? 'Sensor not detected' : humanizeStatus(max30102.ppg_status)}
+                  tone={!max30102Detected ? 'error' : fingerPresent ? 'ok' : 'warn'}
+                  status={!max30102Detected ? 'Offline' : fingerPresent ? 'Ready' : 'Waiting'}
+                />
+                <SensorTile
+                  label="Camera"
+                  value={cameraDetected ? 'Detected' : 'Unavailable'}
+                  detail={cameraDetected ? summarizeCamera(camera.devices) : (camera.status || 'No camera found')}
+                  tone={cameraDetected ? 'ok' : 'error'}
+                  status={cameraDetected ? 'Online' : 'Offline'}
+                />
+                <SensorTile
+                  label="Microphone"
+                  value={microphoneDetected ? 'Detected' : 'Unavailable'}
+                  detail={microphoneDetected ? summarizeMicrophone(microphone) : (microphone.status || 'No microphone found')}
+                  tone={microphoneDetected ? 'ok' : 'error'}
+                  status={microphoneDetected ? 'Online' : 'Offline'}
+                />
+              </div>
+              {liveSensorsData?.timestamp && (
+                <div className="sensor-footer">
+                  Sensor timestamp: {formatSensorTimestamp(liveSensorsData.timestamp)}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Row 2: Cough Curve | Physio Trends */}
@@ -59,4 +144,66 @@ export default function Dashboard({
       </div>
     </div>
   );
+}
+
+function SensorTile({ label, value, detail, status, tone }) {
+  return (
+    <div className="sensor-tile">
+      <div className="sensor-label">{label}</div>
+      <div className="sensor-value">{value}</div>
+      <div className="sensor-detail">{detail}</div>
+      <div className={`sensor-state ${tone}`}>{status}</div>
+    </div>
+  );
+}
+
+function formatMetric(value, unit, digits = 1) {
+  if (value == null) return 'Unavailable';
+  return `${Number(value).toFixed(digits)} ${unit}`;
+}
+
+function humanizeStatus(value) {
+  if (!value) return 'Status unavailable';
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function summarizeCamera(devices) {
+  if (!Array.isArray(devices) || devices.length === 0) {
+    return 'No camera devices listed';
+  }
+  return devices.join(', ');
+}
+
+function summarizeMicrophone(microphone) {
+  const pcm = microphone?.pcm
+    ?.split('\n')
+    .find((line) => line.toLowerCase().includes('usb audio'));
+
+  if (pcm) {
+    return pcm.trim();
+  }
+
+  return microphone?.status || 'USB microphone status unavailable';
+}
+
+function formatSensorTimestamp(timestamp) {
+  if (!timestamp) return '';
+
+  if (typeof timestamp === 'number') {
+    return new Date(timestamp * 1000).toLocaleString();
+  }
+
+  const numericTimestamp = Number(timestamp);
+  if (!Number.isNaN(numericTimestamp)) {
+    return new Date(numericTimestamp * 1000).toLocaleString();
+  }
+
+  const parsed = new Date(timestamp);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleString();
+  }
+
+  return String(timestamp);
 }
