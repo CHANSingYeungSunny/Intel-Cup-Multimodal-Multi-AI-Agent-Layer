@@ -16,6 +16,12 @@ export default function App() {
     error: liveSensorsError,
     refetch: refetchLiveSensors,
   } = useApi(ENDPOINTS.liveSensors);
+  const {
+    data: microphoneLevelData,
+    loading: microphoneLevelLoading,
+    error: microphoneLevelError,
+    refetch: refetchMicrophoneLevel,
+  } = useApi(ENDPOINTS.microphoneLevel);
   const { data: diseaseData, refetch: refetchDisease } = useApi(ENDPOINTS.diseaseClassification);
   const { data: agentAdviceData, loading: agentLoading, error: agentError, refetch: refetchAgent } = useApi(ENDPOINTS.agentAdvice);
 
@@ -58,6 +64,14 @@ export default function App() {
     return () => window.clearInterval(intervalId);
   }, [refetchLiveSensors]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refetchMicrophoneLevel();
+    }, 3000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refetchMicrophoneLevel]);
+
   const handleExperimentChange = useCallback(async (expId) => {
     setActiveExperimentId(expId);
     // Switch via REST first (reliable), then notify via socket
@@ -71,11 +85,12 @@ export default function App() {
     // Refetch ALL data now that backend has switched
     refetchHealth();
     refetchLiveSensors();
+    refetchMicrophoneLevel();
     refetchDisease();
     refetchExperiments();
     refetchAgent();
     setRefreshKey((k) => k + 1);
-  }, [socket, refetchHealth, refetchLiveSensors, refetchDisease, refetchExperiments, refetchAgent]);
+  }, [socket, refetchHealth, refetchLiveSensors, refetchMicrophoneLevel, refetchDisease, refetchExperiments, refetchAgent]);
 
   const handleTestAlert = () => {
     socket.emit('request_alert_test');
@@ -128,6 +143,9 @@ export default function App() {
         liveSensorsData={liveSensorsData}
         liveSensorsLoading={liveSensorsLoading}
         liveSensorsError={liveSensorsError}
+        microphoneLevelData={microphoneLevelData}
+        microphoneLevelLoading={microphoneLevelLoading}
+        microphoneLevelError={microphoneLevelError}
         diseaseData={diseaseData}
         lastHealthUpdate={socket.lastHealthUpdate}
         alertLog={alertLog}

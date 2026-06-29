@@ -223,6 +223,71 @@ body {
   text-align: right;
 }
 
+.media-card {
+  min-height: 320px;
+}
+.camera-preview {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #020617;
+}
+.media-placeholder {
+  width: 100%;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+}
+.media-level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.media-level-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.media-meta {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-word;
+}
+.mic-meter {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+}
+.mic-meter-fill {
+  height: 100%;
+  transition: width 0.25s ease;
+}
+.mic-meter-fill.ok {
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+}
+.mic-meter-fill.warn {
+  background: linear-gradient(90deg, #d97706, #facc15);
+}
+.mic-meter-fill.error {
+  background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
 /* ---- Health State Card ---- */
 .health-state-card {
   display: flex;

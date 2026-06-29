@@ -15,6 +15,7 @@ from flask_cors import CORS
 from config import FLASK_DEBUG
 from dashboard.backend.data_loader import store
 from dashboard.backend.routes.health_routes import health_bp
+from dashboard.backend.routes.media_routes import media_bp
 from dashboard.backend.routes.signal_routes import signal_bp
 from dashboard.backend.routes.disease_routes import disease_bp
 from dashboard.backend.routes.feature_routes import feature_bp
@@ -47,6 +48,7 @@ def create_app():
 
     # Register REST blueprints
     app.register_blueprint(health_bp)
+    app.register_blueprint(media_bp)
     app.register_blueprint(signal_bp)
     app.register_blueprint(disease_bp)
     app.register_blueprint(feature_bp)
@@ -114,6 +116,9 @@ def create_app():
             "<code>dashboard/frontend/</code>.</p>"
             "<p>API endpoints available at:</p><ul>"
             "<li><a href='/api/health_state'>/api/health_state</a></li>"
+            "<li><a href='/api/live_sensors'>/api/live_sensors</a></li>"
+            "<li><a href='/api/camera_snapshot'>/api/camera_snapshot</a></li>"
+            "<li><a href='/api/microphone_level'>/api/microphone_level</a></li>"
             "<li><a href='/api/experiments'>/api/experiments</a></li>"
             "<li><a href='/api/disease_classification'>/api/disease_classification</a></li>"
             "<li><a href='/api/feature_viz'>/api/feature_viz</a></li>"

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ENDPOINTS } from '../utils/api';
 import HealthStateCard from './HealthStateCard';
 import CoughCurveChart from './CoughCurveChart';
 import PhysioTrendChart from './PhysioTrendChart';
@@ -12,6 +13,9 @@ export default function Dashboard({
   liveSensorsData,
   liveSensorsLoading,
   liveSensorsError,
+  microphoneLevelData,
+  microphoneLevelLoading,
+  microphoneLevelError,
   diseaseData,
   lastHealthUpdate,
   alertLog,
@@ -36,7 +40,6 @@ export default function Dashboard({
 
   return (
     <div className="dashboard-grid">
-      {/* Row 1: Health State (full width) */}
       <div className="full-width">
         <HealthStateCard
           healthData={healthData}
@@ -44,7 +47,6 @@ export default function Dashboard({
         />
       </div>
 
-      {/* Row 1.5: Live sensor snapshot (full width) */}
       <div className="full-width">
         <div className="card">
           <div className="card-header">Live Sensor Snapshot</div>
@@ -60,21 +62,21 @@ export default function Dashboard({
                   value={formatMetric(scd40.co2_ppm, 'ppm', 0)}
                   detail="SCD40 /dev/i2c-1 @ 0x62"
                   tone={scd40.co2_ppm != null ? 'ok' : 'warn'}
-                  status={scd40.co2_ppm != null ? 'Live' : 'Unavailable'}
+                  status={scd40.co2_ppm != null ? 'Live' : humanizeStatus(scd40.status || 'unavailable')}
                 />
                 <SensorTile
                   label="Temperature"
                   value={formatMetric(scd40.temperature_c, 'C', 1)}
-                  detail="Ambient from SCD40"
+                  detail={scd40.error || 'Ambient from SCD40'}
                   tone={scd40.temperature_c != null ? 'ok' : 'warn'}
-                  status={scd40.temperature_c != null ? 'Live' : 'Unavailable'}
+                  status={scd40.temperature_c != null ? 'Live' : humanizeStatus(scd40.status || 'unavailable')}
                 />
                 <SensorTile
                   label="Humidity"
                   value={formatMetric(scd40.humidity_percent, '%', 2)}
                   detail="Ambient relative humidity"
                   tone={scd40.humidity_percent != null ? 'ok' : 'warn'}
-                  status={scd40.humidity_percent != null ? 'Live' : 'Unavailable'}
+                  status={scd40.humidity_percent != null ? 'Live' : humanizeStatus(scd40.status || 'unavailable')}
                 />
                 <SensorTile
                   label="IR object temp"
@@ -115,15 +117,19 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Row 2: Cough Curve | Physio Trends */}
+      <CameraPreviewCard cameraDevices={camera.devices} />
+      <MicrophoneLevelCard
+        microphoneLevelData={microphoneLevelData}
+        microphoneLevelLoading={microphoneLevelLoading}
+        microphoneLevelError={microphoneLevelError}
+      />
+
       <CoughCurveChart />
       <PhysioTrendChart />
 
-      {/* Row 3: Disease Classification | Feature Viz */}
       <DiseaseClassification diseaseData={diseaseData} />
       <FeatureVizPanel />
 
-      {/* Row 3.5: AI Agent Suggestions (full width) */}
       <div className="full-width">
         <AgentSuggestionsPanel
           lastAgentAdvice={lastAgentAdvice}
@@ -134,7 +140,6 @@ export default function Dashboard({
         />
       </div>
 
-      {/* Row 4: Alert Status (full width) */}
       <div className="full-width">
         <AlertStatusPanel
           alertLog={alertLog}
@@ -157,6 +162,87 @@ function SensorTile({ label, value, detail, status, tone }) {
   );
 }
 
+function CameraPreviewCard({ cameraDevices }) {
+  const [snapshotKey, setSnapshotKey] = React.useState(() => Date.now());
+  const [loadError, setLoadError] = React.useState(false);
+
+  React.useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setLoadError(false);
+      setSnapshotKey(Date.now());
+    }, 7000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const snapshotUrl = `${ENDPOINTS.cameraSnapshot}?ts=${snapshotKey}`;
+  const deviceSummary = summarizeCamera(cameraDevices);
+
+  return (
+    <div className="card media-card">
+      <div className="card-header">Camera Preview</div>
+      {loadError ? (
+        <div className="media-placeholder error">
+          Camera snapshot unavailable from /dev/video0.
+        </div>
+      ) : (
+        <img
+          className="camera-preview"
+          src={snapshotUrl}
+          alt="Live camera preview"
+          onError={() => setLoadError(true)}
+        />
+      )}
+      <div className="media-meta">Source: /dev/video0 first{deviceSummary ? ` · ${deviceSummary}` : ''}</div>
+      <div className="sensor-footer">Refreshes every 7 seconds</div>
+    </div>
+  );
+}
+
+function MicrophoneLevelCard({ microphoneLevelData, microphoneLevelLoading, microphoneLevelError }) {
+  if (microphoneLevelError) {
+    return (
+      <div className="card media-card">
+        <div className="card-header">Microphone Level</div>
+        <div className="error">{microphoneLevelError}</div>
+      </div>
+    );
+  }
+
+  if (microphoneLevelLoading && !microphoneLevelData) {
+    return (
+      <div className="card media-card">
+        <div className="card-header">Microphone Level</div>
+        <div className="loading">Sampling microphone...</div>
+      </div>
+    );
+  }
+
+  const levelPercent = clampPercent(microphoneLevelData?.level_percent ?? 0);
+  const levelRms = microphoneLevelData?.level_rms;
+  const status = microphoneLevelData?.status || 'microphone_unavailable';
+  const tone = toneForMicrophoneStatus(status);
+
+  return (
+    <div className="card media-card">
+      <div className="card-header">Microphone Level</div>
+      <div className="media-level-row">
+        <div className="media-level-value">
+          {microphoneLevelData?.detected ? `${levelPercent.toFixed(1)}%` : 'Unavailable'}
+        </div>
+        <div className={`sensor-state ${tone}`}>{humanizeStatus(status)}</div>
+      </div>
+      <div className="mic-meter">
+        <div className={`mic-meter-fill ${tone}`} style={{ width: `${levelPercent}%` }} />
+      </div>
+      <div className="media-meta">
+        RMS: {levelRms == null ? 'Unavailable' : levelRms} · Device: {microphoneLevelData?.capture_device || 'USB capture not available'}
+      </div>
+      <div className="sensor-footer">Refreshes every 3 seconds</div>
+    </div>
+  );
+}
+
 function formatMetric(value, unit, digits = 1) {
   if (value == null) return 'Unavailable';
   return `${Number(value).toFixed(digits)} ${unit}`;
@@ -171,7 +257,7 @@ function humanizeStatus(value) {
 
 function summarizeCamera(devices) {
   if (!Array.isArray(devices) || devices.length === 0) {
-    return 'No camera devices listed';
+    return '';
   }
   return devices.join(', ');
 }
@@ -206,4 +292,16 @@ function formatSensorTimestamp(timestamp) {
   }
 
   return String(timestamp);
+}
+
+function clampPercent(value) {
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return 0;
+  return Math.max(0, Math.min(100, numeric));
+}
+
+function toneForMicrophoneStatus(status) {
+  if (status === 'normal') return 'ok';
+  if (status === 'quiet') return 'warn';
+  return 'error';
 }
