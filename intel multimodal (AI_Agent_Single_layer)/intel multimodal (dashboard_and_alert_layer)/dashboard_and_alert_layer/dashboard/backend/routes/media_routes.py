@@ -6,11 +6,12 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import wave
 from pathlib import Path
 
 import numpy as np
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint, Response, jsonify, request
 
 try:
     import cv2  # noqa: F401
@@ -25,6 +26,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[5]
 CAMERA_DEVICE_CANDIDATES = ["/dev/video0", "/dev/video1"]
 CAMERA_TIMEOUT_SECONDS = 4
 CAMERA_JPEG_QUALITY = 85
+CAMERA_STREAM_FPS = 6
+CAMERA_STREAM_BOUNDARY = "frame"
 MICROPHONE_CAPTURE_TIMEOUT_SECONDS = 4
 MICROPHONE_SAMPLE_SECONDS = 1
 MICROPHONE_SAMPLE_RATE = 16000
@@ -93,6 +96,7 @@ def _camera_error(message, device=None, status="camera_capture_failed"):
     return payload
 
 
+
 def _decode_subprocess_error(raw_bytes):
     text = raw_bytes.decode("utf-8", "ignore").strip()
     if not text:
@@ -108,8 +112,73 @@ def _decode_subprocess_error(raw_bytes):
     return text
 
 
+
 def _existing_camera_devices():
     return [device for device in CAMERA_DEVICE_CANDIDATES if Path(device).exists()]
+
+
+
+def _resolve_camera_source(device_path):
+    match = re.search(r"(\d+)$", device_path)
+    if device_path.startswith("/dev/video") and match:
+        return int(match.group(1))
+    return device_path
+
+
+
+def _open_camera_capture():
+    if not _OPENCV_AVAILABLE:
+        return None, None, _camera_error(
+            f"opencv_unavailable:{_OPENCV_IMPORT_ERROR}",
+            status="camera_capture_unavailable",
+        ), 503
+
+    devices = _existing_camera_devices()
+    if not devices:
+        return None, None, _camera_error(
+            "no_camera_device_found",
+            status="camera_not_detected",
+        ), 503
+
+    last_error = None
+    for device in devices:
+        if not os.access(device, os.R_OK | os.W_OK):
+            last_error = _camera_error(
+                f"permission_denied_opening_{device}",
+                device=device,
+                status="camera_permission_denied",
+            )
+            continue
+
+        capture = None
+        try:
+            capture = cv2.VideoCapture(_resolve_camera_source(device), cv2.CAP_V4L2)
+            if not capture.isOpened():
+                last_error = _camera_error(
+                    f"unable_to_open_camera:{device}",
+                    device=device,
+                    status="camera_not_detected",
+                )
+                capture.release()
+                continue
+
+            if hasattr(cv2, "CAP_PROP_BUFFERSIZE"):
+                capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            if hasattr(cv2, "CAP_PROP_FRAME_WIDTH"):
+                capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            if hasattr(cv2, "CAP_PROP_FRAME_HEIGHT"):
+                capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            if hasattr(cv2, "CAP_PROP_FPS"):
+                capture.set(cv2.CAP_PROP_FPS, CAMERA_STREAM_FPS)
+
+            return capture, device, None, 200
+        except Exception as exc:
+            last_error = _camera_error(str(exc), device=device)
+            if capture is not None:
+                capture.release()
+
+    return None, None, last_error or _camera_error("camera_capture_failed"), 503
+
 
 
 def _capture_camera_snapshot_bytes():
@@ -166,6 +235,45 @@ def _capture_camera_snapshot_bytes():
     return None, last_error or _camera_error("camera_capture_failed"), 503
 
 
+
+def _generate_camera_stream(capture):
+    frame_interval = 1.0 / float(CAMERA_STREAM_FPS)
+    consecutive_failures = 0
+
+    try:
+        while True:
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                consecutive_failures += 1
+                if consecutive_failures >= 5:
+                    break
+                time.sleep(frame_interval)
+                continue
+
+            consecutive_failures = 0
+            ok, encoded = cv2.imencode(
+                ".jpg",
+                frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), int(CAMERA_JPEG_QUALITY)],
+            )
+            if not ok:
+                time.sleep(frame_interval)
+                continue
+
+            frame_bytes = encoded.tobytes()
+            yield (
+                b"--" + CAMERA_STREAM_BOUNDARY.encode("ascii") + b"\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(frame_bytes)).encode("ascii") + b"\r\n\r\n"
+                + frame_bytes
+                + b"\r\n"
+            )
+            time.sleep(frame_interval)
+    finally:
+        capture.release()
+
+
+
 def _find_usb_microphone_device():
     arecord_path = shutil.which("arecord")
     if not arecord_path:
@@ -210,6 +318,7 @@ def _find_usb_microphone_device():
     return None, "usb_microphone_not_detected"
 
 
+
 def _build_microphone_unavailable(error_message, capture_device=None):
     payload = {
         "detected": False,
@@ -224,12 +333,14 @@ def _build_microphone_unavailable(error_message, capture_device=None):
     return payload
 
 
+
 def _classify_microphone_level(level_percent):
     if level_percent < 2.0:
         return "quiet"
     if level_percent < 12.0:
         return "normal"
     return "loud"
+
 
 
 def _capture_microphone_level_payload():
@@ -313,7 +424,36 @@ def camera_snapshot():
     )
 
 
+@media_bp.route("/api/camera_stream", methods=["GET", "HEAD"])
+def camera_stream():
+    capture, device, error_payload, status_code = _open_camera_capture()
+    if capture is None:
+        return jsonify(error_payload), status_code
+
+    response_headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "X-Camera-Device": device or "",
+    }
+
+    if request.method == "HEAD":
+        capture.release()
+        return Response(
+            status=200,
+            mimetype=f"multipart/x-mixed-replace; boundary={CAMERA_STREAM_BOUNDARY}",
+            headers=response_headers,
+        )
+
+    return Response(
+        _generate_camera_stream(capture),
+        mimetype=f"multipart/x-mixed-replace; boundary={CAMERA_STREAM_BOUNDARY}",
+        headers=response_headers,
+        direct_passthrough=True,
+    )
+
+
 @media_bp.route("/api/microphone_level", methods=["GET"])
 def microphone_level():
     payload, status_code = _capture_microphone_level_payload()
     return jsonify(payload), status_code
+

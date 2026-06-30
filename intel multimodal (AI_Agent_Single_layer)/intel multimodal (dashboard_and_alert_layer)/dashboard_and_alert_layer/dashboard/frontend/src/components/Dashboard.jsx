@@ -59,6 +59,10 @@ export default function Dashboard({
       </div>
 
       <div className="full-width">
+        <CameraPreviewCard cameraDevices={camera.devices} />
+      </div>
+
+      <div className="full-width">
         <div className="card">
           <div className="card-header">Live Sensor Snapshot</div>
           {liveSensorsError ? (
@@ -128,16 +132,13 @@ export default function Dashboard({
         </div>
       </div>
 
-      <CameraPreviewCard cameraDevices={camera.devices} />
       <MicrophoneLevelCard
         microphoneLevelData={microphoneLevelData}
         microphoneLevelLoading={microphoneLevelLoading}
         microphoneLevelError={microphoneLevelError}
       />
-
       <CoughCurveChart />
       <PhysioTrendChart />
-
       <DiseaseClassification diseaseData={diseaseData} />
       <FeatureVizPanel />
 
@@ -233,37 +234,58 @@ function SensorTile({ label, value, detail, status, tone }) {
 
 function CameraPreviewCard({ cameraDevices }) {
   const [snapshotKey, setSnapshotKey] = React.useState(() => Date.now());
-  const [loadError, setLoadError] = React.useState(false);
+  const [streamFailed, setStreamFailed] = React.useState(false);
+  const [fallbackFailed, setFallbackFailed] = React.useState(false);
 
   React.useEffect(() => {
+    if (!streamFailed || fallbackFailed) {
+      return undefined;
+    }
+
     const intervalId = window.setInterval(() => {
-      setLoadError(false);
       setSnapshotKey(Date.now());
     }, 7000);
 
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [streamFailed, fallbackFailed]);
 
-  const snapshotUrl = `${ENDPOINTS.cameraSnapshot}?ts=${snapshotKey}`;
   const deviceSummary = summarizeCamera(cameraDevices);
+  const imageSrc = streamFailed ? `${ENDPOINTS.cameraSnapshot}?ts=${snapshotKey}` : ENDPOINTS.cameraStream;
+
+  const handleImageError = () => {
+    if (!streamFailed) {
+      setStreamFailed(true);
+      setFallbackFailed(false);
+      setSnapshotKey(Date.now());
+      return;
+    }
+
+    setFallbackFailed(true);
+  };
 
   return (
-    <div className="card media-card">
+    <div className="card media-card camera-card">
       <div className="card-header">Camera Preview</div>
-      {loadError ? (
-        <div className="media-placeholder error">
-          Camera snapshot unavailable from /dev/video0.
-        </div>
-      ) : (
-        <img
-          className="camera-preview"
-          src={snapshotUrl}
-          alt="Live camera preview"
-          onError={() => setLoadError(true)}
-        />
-      )}
-      <div className="media-meta">Source: /dev/video0 first{deviceSummary ? ` - ${deviceSummary}` : ''}</div>
-      <div className="sensor-footer">Refreshes every 7 seconds</div>
+      <div className="camera-preview-shell">
+        {fallbackFailed ? (
+          <div className="media-placeholder camera-preview-placeholder error">
+            Camera stream unavailable, and snapshot fallback could not be loaded.
+          </div>
+        ) : (
+          <img
+            className="camera-preview camera-preview-large"
+            src={imageSrc}
+            alt="Live camera preview"
+            onError={handleImageError}
+          />
+        )}
+      </div>
+      <div className="media-meta">
+        Source: {streamFailed ? '/api/camera_snapshot fallback' : '/api/camera_stream'}{deviceSummary ? ` - ${deviceSummary}` : ''}
+      </div>
+      <div className="sensor-footer">
+        {streamFailed ? 'Snapshot fallback refreshes every 7 seconds' : 'Live stream target: 6 FPS'}
+      </div>
     </div>
   );
 }

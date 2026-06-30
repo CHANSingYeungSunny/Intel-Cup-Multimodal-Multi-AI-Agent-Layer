@@ -9,6 +9,7 @@ export const ENDPOINTS = {
   liveSensors: `${API_BASE}/api/live_sensors`,
   liveSummary: `${API_BASE}/api/live_summary`,
   cameraSnapshot: `${API_BASE}/api/camera_snapshot`,
+  cameraStream: `${API_BASE}/api/camera_stream`,
   microphoneLevel: `${API_BASE}/api/microphone_level`,
   coughCurve: `${API_BASE}/api/cough_curve`,
   physioTrend: `${API_BASE}/api/physio_trend`,
@@ -35,4 +36,6 @@ export async function postJSON(url) {
   }
   return res.json();
 }
+
+
 

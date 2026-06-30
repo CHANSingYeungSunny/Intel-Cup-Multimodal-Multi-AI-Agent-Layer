@@ -226,13 +226,23 @@ body {
 .media-card {
   min-height: 320px;
 }
+.camera-card {
+  min-height: 0;
+}
+.camera-preview-shell {
+  width: 100%;
+}
 .camera-preview {
   width: 100%;
-  height: 220px;
-  object-fit: cover;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: #020617;
+}
+.camera-preview-large {
+  aspect-ratio: 16 / 9;
+  max-height: 520px;
+  min-height: 320px;
+  object-fit: cover;
 }
 .media-placeholder {
   width: 100%;
@@ -246,6 +256,12 @@ body {
   border: 1px dashed var(--border);
   background: var(--bg-primary);
   color: var(--text-secondary);
+}
+.camera-preview-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 520px;
+  min-height: 320px;
 }
 .media-level-row {
   display: flex;
@@ -679,4 +695,6 @@ body {
   color: var(--text-secondary);
   line-height: 1.5;
 }
+
+
 
