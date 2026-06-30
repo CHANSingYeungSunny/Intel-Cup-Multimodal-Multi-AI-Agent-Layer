@@ -7,6 +7,7 @@ export const ENDPOINTS = {
   healthState: `${API_BASE}/api/health_state`,
   healthHistory: `${API_BASE}/api/health_history`,
   liveSensors: `${API_BASE}/api/live_sensors`,
+  liveSummary: `${API_BASE}/api/live_summary`,
   cameraSnapshot: `${API_BASE}/api/camera_snapshot`,
   microphoneLevel: `${API_BASE}/api/microphone_level`,
   coughCurve: `${API_BASE}/api/cough_curve`,
@@ -34,3 +35,4 @@ export async function postJSON(url) {
   }
   return res.json();
 }
+

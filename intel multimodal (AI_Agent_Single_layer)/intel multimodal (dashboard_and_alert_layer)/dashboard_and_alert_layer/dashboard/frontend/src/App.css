@@ -1,5 +1,5 @@
 /* ===================================================================
-   Multimodal Health Monitoring Dashboard — Styles
+   Multimodal Health Monitoring Dashboard ??? Styles
    Dark theme, CSS Grid layout
    =================================================================== */
 
@@ -631,3 +631,52 @@ body {
   .app-header { flex-direction: column; align-items: flex-start; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.summary-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.summary-header-row .card-header {
+  margin-bottom: 0;
+}
+.summary-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.summary-item-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.summary-item {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.summary-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.summary-item-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.summary-item-message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+

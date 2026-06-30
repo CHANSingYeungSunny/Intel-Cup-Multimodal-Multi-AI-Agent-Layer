@@ -10,6 +10,9 @@ import AgentSuggestionsPanel from './AgentSuggestionsPanel';
 
 export default function Dashboard({
   healthData,
+  liveSummaryData,
+  liveSummaryLoading,
+  liveSummaryError,
   liveSensorsData,
   liveSensorsLoading,
   liveSensorsError,
@@ -44,6 +47,14 @@ export default function Dashboard({
         <HealthStateCard
           healthData={healthData}
           lastUpdate={lastHealthUpdate}
+        />
+      </div>
+
+      <div className="full-width">
+        <LiveSummaryCard
+          liveSummaryData={liveSummaryData}
+          liveSummaryLoading={liveSummaryLoading}
+          liveSummaryError={liveSummaryError}
         />
       </div>
 
@@ -151,6 +162,64 @@ export default function Dashboard({
   );
 }
 
+function LiveSummaryCard({ liveSummaryData, liveSummaryLoading, liveSummaryError }) {
+  if (liveSummaryError) {
+    return (
+      <div className="card summary-card">
+        <div className="summary-header-row">
+          <div className="card-header">Current Multimodal Status</div>
+        </div>
+        <div className="error">{liveSummaryError}</div>
+      </div>
+    );
+  }
+
+  if (liveSummaryLoading && !liveSummaryData) {
+    return (
+      <div className="card summary-card">
+        <div className="summary-header-row">
+          <div className="card-header">Current Multimodal Status</div>
+        </div>
+        <div className="loading">Loading live summary...</div>
+      </div>
+    );
+  }
+
+  const items = liveSummaryData?.items || [];
+  const overallStatus = liveSummaryData?.overall_status || 'unavailable';
+  const overallTone = toneForSummaryStatus(overallStatus);
+
+  return (
+    <div className="card summary-card">
+      <div className="summary-header-row">
+        <div className="card-header">Current Multimodal Status</div>
+        <div className={`sensor-state ${overallTone}`}>{humanizeStatus(overallStatus)}</div>
+      </div>
+      <p className="summary-text">
+        {liveSummaryData?.summary || 'Live summary is not currently available.'}
+      </p>
+      <div className="summary-item-list">
+        {items.map((item) => (
+          <div key={item.label} className="summary-item">
+            <div className="summary-item-top">
+              <div className="summary-item-label">{item.label}</div>
+              <div className={`sensor-state ${toneForSummaryStatus(item.status)}`}>
+                {humanizeStatus(item.status)}
+              </div>
+            </div>
+            <div className="summary-item-message">{item.message}</div>
+          </div>
+        ))}
+      </div>
+      {liveSummaryData?.timestamp && (
+        <div className="sensor-footer">
+          Summary timestamp: {formatSensorTimestamp(liveSummaryData.timestamp)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SensorTile({ label, value, detail, status, tone }) {
   return (
     <div className="sensor-tile">
@@ -193,22 +262,13 @@ function CameraPreviewCard({ cameraDevices }) {
           onError={() => setLoadError(true)}
         />
       )}
-      <div className="media-meta">Source: /dev/video0 first{deviceSummary ? ` · ${deviceSummary}` : ''}</div>
+      <div className="media-meta">Source: /dev/video0 first{deviceSummary ? ` - ${deviceSummary}` : ''}</div>
       <div className="sensor-footer">Refreshes every 7 seconds</div>
     </div>
   );
 }
 
 function MicrophoneLevelCard({ microphoneLevelData, microphoneLevelLoading, microphoneLevelError }) {
-  if (microphoneLevelError) {
-    return (
-      <div className="card media-card">
-        <div className="card-header">Microphone Level</div>
-        <div className="error">{microphoneLevelError}</div>
-      </div>
-    );
-  }
-
   if (microphoneLevelLoading && !microphoneLevelData) {
     return (
       <div className="card media-card">
@@ -218,25 +278,27 @@ function MicrophoneLevelCard({ microphoneLevelData, microphoneLevelLoading, micr
     );
   }
 
+  const hasLiveReading = Boolean(microphoneLevelData?.detected);
   const levelPercent = clampPercent(microphoneLevelData?.level_percent ?? 0);
   const levelRms = microphoneLevelData?.level_rms;
-  const status = microphoneLevelData?.status || 'microphone_unavailable';
+  const status = microphoneLevelError ? 'microphone_unavailable' : (microphoneLevelData?.status || 'microphone_unavailable');
   const tone = toneForMicrophoneStatus(status);
+  const detailMessage = microphoneLevelError || microphoneLevelData?.error || 'USB capture not available';
 
   return (
     <div className="card media-card">
       <div className="card-header">Microphone Level</div>
       <div className="media-level-row">
         <div className="media-level-value">
-          {microphoneLevelData?.detected ? `${levelPercent.toFixed(1)}%` : 'Unavailable'}
+          {hasLiveReading ? `${levelPercent.toFixed(1)}%` : 'Unavailable'}
         </div>
         <div className={`sensor-state ${tone}`}>{humanizeStatus(status)}</div>
       </div>
       <div className="mic-meter">
-        <div className={`mic-meter-fill ${tone}`} style={{ width: `${levelPercent}%` }} />
+        <div className={`mic-meter-fill ${tone}`} style={{ width: `${hasLiveReading ? levelPercent : 0}%` }} />
       </div>
       <div className="media-meta">
-        RMS: {levelRms == null ? 'Unavailable' : levelRms} · Device: {microphoneLevelData?.capture_device || 'USB capture not available'}
+        {hasLiveReading ? `RMS: ${levelRms} - Device: ${microphoneLevelData?.capture_device || 'USB capture not available'}` : detailMessage}
       </div>
       <div className="sensor-footer">Refreshes every 3 seconds</div>
     </div>
@@ -305,3 +367,10 @@ function toneForMicrophoneStatus(status) {
   if (status === 'quiet') return 'warn';
   return 'error';
 }
+
+function toneForSummaryStatus(status) {
+  if (status === 'normal' || status === 'online' || status === 'active') return 'ok';
+  if (status === 'attention' || status === 'waiting' || status === 'quiet') return 'warn';
+  return 'error';
+}
+
