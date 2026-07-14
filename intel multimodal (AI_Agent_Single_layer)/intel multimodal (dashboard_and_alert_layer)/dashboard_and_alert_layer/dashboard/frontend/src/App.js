@@ -16,6 +16,18 @@ export default function App() {
     error: liveSensorsError,
     refetch: refetchLiveSensors,
   } = useApi(ENDPOINTS.liveSensors);
+  const {
+    data: liveSummaryData,
+    loading: liveSummaryLoading,
+    error: liveSummaryError,
+    refetch: refetchLiveSummary,
+  } = useApi(ENDPOINTS.liveSummary);
+  const {
+    data: microphoneLevelData,
+    loading: microphoneLevelLoading,
+    error: microphoneLevelError,
+    refetch: refetchMicrophoneLevel,
+  } = useApi(ENDPOINTS.microphoneLevel);
   const { data: diseaseData, refetch: refetchDisease } = useApi(ENDPOINTS.diseaseClassification);
   const { data: agentAdviceData, loading: agentLoading, error: agentError, refetch: refetchAgent } = useApi(ENDPOINTS.agentAdvice);
 
@@ -24,10 +36,8 @@ export default function App() {
   const [agentAdviceLog, setAgentAdviceLog] = useState([]);
   const [simSpeed, setSimSpeed] = useState(1);
   const [simPaused, setSimPaused] = useState(false);
-  // force child components to remount on experiment change
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Only sync experiment ID from API on initial load, not on every refetch
   const initialSyncDone = useRef(false);
   useEffect(() => {
     if (!initialSyncDone.current && experimentsData?.active_experiment_id) {
@@ -36,14 +46,12 @@ export default function App() {
     }
   }, [experimentsData]);
 
-  // Track alerts from WebSocket
   useEffect(() => {
     if (socket.lastAlert) {
       setAlertLog((prev) => [socket.lastAlert, ...prev].slice(0, 50));
     }
   }, [socket.lastAlert]);
 
-  // Track agent advice from WebSocket
   useEffect(() => {
     if (socket.lastAgentAdvice) {
       setAgentAdviceLog((prev) => [socket.lastAgentAdvice, ...prev].slice(0, 50));
@@ -53,29 +61,47 @@ export default function App() {
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       refetchLiveSensors();
+      refetchLiveSummary();
     }, 20000);
 
     return () => window.clearInterval(intervalId);
-  }, [refetchLiveSensors]);
+  }, [refetchLiveSensors, refetchLiveSummary]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refetchMicrophoneLevel();
+    }, 3000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refetchMicrophoneLevel]);
 
   const handleExperimentChange = useCallback(async (expId) => {
     setActiveExperimentId(expId);
-    // Switch via REST first (reliable), then notify via socket
     try {
       await postJSON(ENDPOINTS.switchExperiment(expId));
     } catch (e) {
-      // Fallback: try socket if REST fails
       socket.emit('set_experiment', { experiment_id: expId });
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
-    // Refetch ALL data now that backend has switched
+
     refetchHealth();
     refetchLiveSensors();
+    refetchLiveSummary();
+    refetchMicrophoneLevel();
     refetchDisease();
     refetchExperiments();
     refetchAgent();
-    setRefreshKey((k) => k + 1);
-  }, [socket, refetchHealth, refetchLiveSensors, refetchDisease, refetchExperiments, refetchAgent]);
+    setRefreshKey((value) => value + 1);
+  }, [
+    socket,
+    refetchHealth,
+    refetchLiveSensors,
+    refetchLiveSummary,
+    refetchMicrophoneLevel,
+    refetchDisease,
+    refetchExperiments,
+    refetchAgent,
+  ]);
 
   const handleTestAlert = () => {
     socket.emit('request_alert_test');
@@ -117,7 +143,7 @@ export default function App() {
               </select>
             </label>
             <button className="btn" onClick={handlePauseToggle}>
-              {simPaused ? '▶ Resume' : '⏸ Pause'}
+              {simPaused ? 'Resume' : 'Pause'}
             </button>
           </div>
         </div>
@@ -125,9 +151,15 @@ export default function App() {
       <Dashboard
         key={refreshKey}
         healthData={healthData}
+        liveSummaryData={liveSummaryData}
+        liveSummaryLoading={liveSummaryLoading}
+        liveSummaryError={liveSummaryError}
         liveSensorsData={liveSensorsData}
         liveSensorsLoading={liveSensorsLoading}
         liveSensorsError={liveSensorsError}
+        microphoneLevelData={microphoneLevelData}
+        microphoneLevelLoading={microphoneLevelLoading}
+        microphoneLevelError={microphoneLevelError}
         diseaseData={diseaseData}
         lastHealthUpdate={socket.lastHealthUpdate}
         alertLog={alertLog}
@@ -142,3 +174,4 @@ export default function App() {
     </div>
   );
 }
+

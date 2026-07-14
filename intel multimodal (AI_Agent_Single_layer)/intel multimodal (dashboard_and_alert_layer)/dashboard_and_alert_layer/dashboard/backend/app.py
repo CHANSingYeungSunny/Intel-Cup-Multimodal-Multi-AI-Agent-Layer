@@ -15,6 +15,7 @@ from flask_cors import CORS
 from config import FLASK_DEBUG
 from dashboard.backend.data_loader import store
 from dashboard.backend.routes.health_routes import health_bp
+from dashboard.backend.routes.media_routes import media_bp
 from dashboard.backend.routes.signal_routes import signal_bp
 from dashboard.backend.routes.disease_routes import disease_bp
 from dashboard.backend.routes.feature_routes import feature_bp
@@ -45,15 +46,14 @@ def create_app():
     CORS(app)
     socketio.init_app(app, cors_allowed_origins="*", async_mode="threading")
 
-    # Register REST blueprints
     app.register_blueprint(health_bp)
+    app.register_blueprint(media_bp)
     app.register_blueprint(signal_bp)
     app.register_blueprint(disease_bp)
     app.register_blueprint(feature_bp)
     app.register_blueprint(experiment_bp)
     app.register_blueprint(agent_bp)
 
-    # ---- SocketIO event handlers ----
     @socketio.on("connect")
     def on_connect():
         emit("system_status", _build_system_status())
@@ -102,7 +102,6 @@ def create_app():
             if advice:
                 emit("agent_advice", advice)
 
-    # ---- Serve React frontend ----
     @app.route("/")
     def serve_index():
         build_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
@@ -114,6 +113,10 @@ def create_app():
             "<code>dashboard/frontend/</code>.</p>"
             "<p>API endpoints available at:</p><ul>"
             "<li><a href='/api/health_state'>/api/health_state</a></li>"
+            "<li><a href='/api/live_sensors'>/api/live_sensors</a></li>"
+            "<li><a href='/api/live_summary'>/api/live_summary</a></li>"
+            "<li><a href='/api/camera_snapshot'>/api/camera_snapshot</a></li>"
+            "<li><a href='/api/microphone_level'>/api/microphone_level</a></li>"
             "<li><a href='/api/experiments'>/api/experiments</a></li>"
             "<li><a href='/api/disease_classification'>/api/disease_classification</a></li>"
             "<li><a href='/api/feature_viz'>/api/feature_viz</a></li>"
@@ -129,7 +132,6 @@ def create_app():
             return send_from_directory(build_dir, path)
         return send_from_directory(build_dir, "index.html")
 
-    # ---- Error handlers ----
     @app.errorhandler(404)
     def not_found(e):
         return {"error": "Not found"}, 404
@@ -141,27 +143,29 @@ def create_app():
     return app
 
 
+
 def set_alert_manager(mgr):
     global _alert_manager
     _alert_manager = mgr
+
 
 
 def set_agent_instance(agent):
     """Store the HealthAgent singleton for SocketIO handlers and simulator."""
     global _agent_instance
     _agent_instance = agent
-    # Also wire into the Flask route helpers
     from agent_layer.routes.agent_routes import set_agent_instance as route_set_agent
     route_set_agent(agent)
+
 
 
 def start_simulator(agent=None, agent_api_url=None):
     global simulator
     simulator = HealthSimulator(store, socketio, _alert_manager, agent=agent, agent_api_url=agent_api_url)
     simulator.start()
-    # Start periodic system status emission
     threading.Thread(target=_emit_system_status, daemon=True).start()
     return simulator
+
 
 
 def _emit_system_status():
@@ -171,6 +175,7 @@ def _emit_system_status():
             socketio.emit("system_status", _build_system_status())
         except Exception:
             pass
+
 
 
 def _build_system_status():
@@ -191,3 +196,4 @@ def _build_system_status():
         "agent_condition": agent_status.get("latest_condition", ""),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+

@@ -4,6 +4,9 @@ set -u
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$ROOT_DIR/.venv"
 PC_IP="$(hostname -I | awk '{print $1}')"
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+FALLBACK_NODE="/home/user/.nvm/versions/node/v24.18.0/bin/node"
+REACT_SCRIPTS_ENTRY="node_modules/react-scripts/bin/react-scripts.js"
 
 if [ ! -d "$VENV_DIR" ] && [ -d "$ROOT_DIR/venv" ]; then
     VENV_DIR="$ROOT_DIR/venv"
@@ -21,6 +24,13 @@ activate_venv() {
     else
         echo "ERROR: venv not found at $VENV_DIR"
         exit 1
+    fi
+}
+
+load_nvm() {
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        # Load nvm for noninteractive shells such as SSH sessions.
+        . "$NVM_DIR/nvm.sh"
     fi
 }
 
@@ -58,11 +68,10 @@ cleanup() {
     pkill -f "python run.py --no-agent" 2>/dev/null || true
     pkill -f "npm start" 2>/dev/null || true
     pkill -f "react-scripts start" 2>/dev/null || true
+    pkill -f "$REACT_SCRIPTS_ENTRY start" 2>/dev/null || true
 
     echo "Stopped."
 }
-
-trap cleanup SIGINT SIGTERM
 
 echo "Starting Intel Multimodal system..."
 echo "Root: $ROOT_DIR"
@@ -96,39 +105,51 @@ wait_for_port 5000 "Flask Dashboard Backend" "$LOG_DIR/dashboard_backend.log"
 (
     cd "$FRONTEND_DIR" || exit 1
     echo "Starting React Dashboard Frontend..."
+    load_nvm
 
-    if [ ! -d "node_modules" ]; then
+    npm_cmd="$(command -v npm 2>/dev/null || true)"
+
+    if [ ! -d "node_modules" ] && [ -n "$npm_cmd" ]; then
         echo "node_modules not found. Running npm install..."
-        npm install
+        "$npm_cmd" install
+    elif [ ! -d "node_modules" ]; then
+        echo "ERROR: node_modules not found and npm is unavailable."
+        exit 1
     fi
 
-    npm start
+    if [ -n "$npm_cmd" ]; then
+        "$npm_cmd" start
+    elif [ -x "$FALLBACK_NODE" ] && [ -f "$REACT_SCRIPTS_ENTRY" ]; then
+        echo "npm not found after loading NVM. Falling back to $FALLBACK_NODE"
+        "$FALLBACK_NODE" "$REACT_SCRIPTS_ENTRY" start
+    else
+        echo "ERROR: npm not found and fallback React startup command is unavailable."
+        exit 1
+    fi
 ) > "$LOG_DIR/dashboard_frontend.log" 2>&1 &
 
 FRONTEND_PID=$!
 wait_for_port 3000 "React Frontend" "$LOG_DIR/dashboard_frontend.log"
 
 echo ""
-echo "All services are running."
+echo "Services started in background."
 echo ""
-echo "FastAPI docs local:        http://localhost:8000/docs"
-echo "Dashboard backend local:   http://localhost:5000"
-echo "Dashboard frontend local:  http://localhost:3000"
+echo "Open:"
+echo "- Dashboard frontend: http://localhost:3000"
+echo "- Dashboard backend:  http://localhost:5000"
+echo "- Agent backend:      http://localhost:8000/docs"
 echo ""
 echo "Open from your PC/browser:"
-echo "FastAPI docs:              http://$PC_IP:8000/docs"
-echo "Dashboard backend:         http://$PC_IP:5000"
-echo "Dashboard frontend:        http://$PC_IP:3000"
+echo "- Dashboard frontend: http://$PC_IP:3000"
+echo "- Dashboard backend:  http://$PC_IP:5000"
+echo "- Agent backend:      http://$PC_IP:8000/docs"
+echo ""
+echo "To stop:"
+echo "- Run ./stop_all.sh"
 echo ""
 echo "Logs:"
-echo "  $LOG_DIR/agent_backend.log"
-echo "  $LOG_DIR/dashboard_backend.log"
-echo "  $LOG_DIR/dashboard_frontend.log"
-echo ""
-echo "Health test:"
-echo "  curl http://localhost:5000/api/health_state"
-echo "  curl http://localhost:3000/api/health_state"
-echo ""
-echo "Press Ctrl+C to stop all services."
+echo "- logs/agent_backend.log"
+echo "- logs/dashboard_backend.log"
+echo "- logs/dashboard_frontend.log"
 
-wait
+exit 0
