@@ -95,6 +95,7 @@ from schemas import (  # noqa: E402
     AgentsResponse,
     MCPStatusResponse,
     MultiTickResponse,
+    LiveInferenceResponse,
     WorkflowRequest,
     WorkflowResponse,
     AgentRegisterRequest,
@@ -251,7 +252,18 @@ async def lifespan(app: FastAPI):
     )
     app.state.coordinator = coordinator
 
-    # 8. Register skills as logical agents in MCP
+    # 8. Live Inference Engine
+    from skills.live_inference import LiveInferenceEngine
+
+    live_engine = LiveInferenceEngine(
+        coordinator=coordinator,
+        interval=2.0,
+    )
+    app.state.live_engine = live_engine
+    await live_engine.start()
+    logger.info("LiveInferenceEngine started (background inference loop)")
+
+    # 9. Register skills as logical agents in MCP
     for skill_name, skill_obj in skills.items():
         await mcp_server.register_agent(
             agent_id=skill_name,
@@ -287,7 +299,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # --- Shutdown -----------------------------------------------------------
-    logger.info("Shutting down — disposing database engines")
+    logger.info("Shutting down — stopping live inference and disposing engines")
+    if hasattr(app.state, "live_engine"):
+        await app.state.live_engine.stop()
     await dispose_engine()
     await dispose_multi_engine()
 
@@ -959,6 +973,34 @@ async def get_workflow_status(request: Request, session_id: str):
             status_code=404, detail=f"Workflow '{session_id}' not found"
         )
     return session
+
+
+# ===========================================================================
+# Live Inference — real-time hardware → AI → advice
+# ===========================================================================
+
+@router_multi.get(
+    "/live/inference",
+    response_model=LiveInferenceResponse,
+    summary="Get latest live inference result",
+)
+async def get_live_inference(request: Request):
+    """
+    Return the most recent real-time inference result from the live
+    hardware → AI pipeline (camera + microphone + sensors → fusion → agent).
+
+    Runs in a background thread; this endpoint returns the cached latest
+    result without blocking.  Falls back to mock data when hardware is
+    unavailable.
+    """
+    engine = getattr(request.app.state, "live_engine", None)
+    if engine is None:
+        return LiveInferenceResponse(
+            health_state="Unavailable",
+            status="error",
+            mode="mock",
+        )
+    return engine.get_latest()
 
 
 # ===========================================================================

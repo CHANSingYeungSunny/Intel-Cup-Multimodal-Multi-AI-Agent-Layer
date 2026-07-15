@@ -457,3 +457,22 @@ def microphone_level():
     payload, status_code = _capture_microphone_level_payload()
     return jsonify(payload), status_code
 
+
+@media_bp.route("/api/live_inference", methods=["GET"])
+def live_inference():
+    """Proxy to the Multi-AI Agent Layer's live inference endpoint."""
+    import os
+    import requests as req
+
+    agent_url = os.environ.get("AGENT_API_URL", "http://localhost:8000/api/v1")
+    try:
+        resp = req.get(f"{agent_url}/multi/live/inference", timeout=5)
+        if resp.status_code == 200:
+            return jsonify(resp.json())
+        return (
+            jsonify({"status": "error", "error": f"Agent returned {resp.status_code}"}),
+            502,
+        )
+    except req.RequestException as exc:
+        return jsonify({"status": "agent_unavailable", "error": str(exc)}), 503
+

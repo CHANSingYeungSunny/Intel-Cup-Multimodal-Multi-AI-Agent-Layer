@@ -19,6 +19,7 @@ export const ENDPOINTS = {
   experiment: (id) => `${API_BASE}/api/experiments/${id}`,
   switchExperiment: (id) => `${API_BASE}/api/experiments/switch/${id}`,
   agentAdvice: `${API_BASE}/api/agent_advice`,
+  liveInference: `${API_BASE}/api/live_inference`,
 };
 
 export async function fetchJSON(url) {

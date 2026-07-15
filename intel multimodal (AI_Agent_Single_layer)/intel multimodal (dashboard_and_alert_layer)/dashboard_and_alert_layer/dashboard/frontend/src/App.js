@@ -30,6 +30,12 @@ export default function App() {
   } = useApi(ENDPOINTS.microphoneLevel);
   const { data: diseaseData, refetch: refetchDisease } = useApi(ENDPOINTS.diseaseClassification);
   const { data: agentAdviceData, loading: agentLoading, error: agentError, refetch: refetchAgent } = useApi(ENDPOINTS.agentAdvice);
+  const {
+    data: liveInferenceData,
+    loading: liveInferenceLoading,
+    error: liveInferenceError,
+    refetch: refetchLiveInference,
+  } = useApi(ENDPOINTS.liveInference);
 
   const [activeExperimentId, setActiveExperimentId] = useState(1);
   const [alertLog, setAlertLog] = useState([]);
@@ -74,6 +80,14 @@ export default function App() {
 
     return () => window.clearInterval(intervalId);
   }, [refetchMicrophoneLevel]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refetchLiveInference();
+    }, 2000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refetchLiveInference]);
 
   const handleExperimentChange = useCallback(async (expId) => {
     setActiveExperimentId(expId);
@@ -168,6 +182,9 @@ export default function App() {
         agentAdviceLog={agentAdviceLog}
         agentLoading={agentLoading}
         agentError={agentError}
+        liveInferenceData={liveInferenceData}
+        liveInferenceLoading={liveInferenceLoading}
+        liveInferenceError={liveInferenceError}
         socket={socket}
         onTestAlert={handleTestAlert}
       />

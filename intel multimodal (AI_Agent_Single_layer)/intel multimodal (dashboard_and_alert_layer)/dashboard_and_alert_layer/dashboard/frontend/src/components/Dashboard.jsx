@@ -27,6 +27,9 @@ export default function Dashboard({
   agentAdviceLog,
   agentLoading,
   agentError,
+  liveInferenceData,
+  liveInferenceLoading,
+  liveInferenceError,
   socket,
   onTestAlert,
 }) {
@@ -141,6 +144,14 @@ export default function Dashboard({
       <PhysioTrendChart />
       <DiseaseClassification diseaseData={diseaseData} />
       <FeatureVizPanel />
+
+      <div className="full-width">
+        <LiveInferenceCard
+          data={liveInferenceData}
+          loading={liveInferenceLoading}
+          error={liveInferenceError}
+        />
+      </div>
 
       <div className="full-width">
         <AgentSuggestionsPanel
@@ -394,5 +405,133 @@ function toneForSummaryStatus(status) {
   if (status === 'normal' || status === 'online' || status === 'active') return 'ok';
   if (status === 'attention' || status === 'waiting' || status === 'quiet') return 'warn';
   return 'error';
+}
+
+
+/** Live AI Inference card — shows real-time AI predictions from hardware. */
+function LiveInferenceCard({ data, loading, error }) {
+  if (error) {
+    return (
+      <div className="card">
+        <div className="card-header">🧠 Live AI Inference</div>
+        <div className="error" style={{ fontSize: 12 }}>
+          AI inference unavailable: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !data) {
+    return (
+      <div className="card">
+        <div className="card-header">🧠 Live AI Inference</div>
+        <div className="loading" style={{ fontSize: 12 }}>
+          Connecting to AI inference pipeline…
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="card">
+        <div className="card-header">🧠 Live AI Inference</div>
+        <div className="empty" style={{ fontSize: 12 }}>
+          Waiting for first inference cycle…
+        </div>
+      </div>
+    );
+  }
+
+  const healthState = data.health_state || 'Unknown';
+  const prediction = data.prediction;
+  const confidence = data.confidence;
+  const status = data.status || 'unknown';
+  const mode = data.mode || 'mock';
+  const advice = data.advice;
+  const anomalies = data.anomalies || [];
+  const timestamp = data.timestamp;
+
+  const severityColors = {
+    Healthy: '#22c55e',
+    'Sub-healthy': '#eab308',
+    Unhealthy: '#ef4444',
+    'Initializing...': '#6b7280',
+    Unknown: '#6b7280',
+  };
+  const color = severityColors[healthState] || '#6b7280';
+
+  const statusBadge = {
+    ok: { label: 'Live', className: 'ok' },
+    degraded: { label: 'Degraded', className: 'warn' },
+    initializing: { label: 'Initializing', className: '' },
+    error: { label: 'Error', className: 'error' },
+  }[status] || { label: status, className: '' };
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        🧠 Live AI Inference
+        <span style={{ float: 'right', fontSize: 11, fontWeight: 400 }}>
+          <span className={`status-badge ${statusBadge.className}`}>
+            {statusBadge.label}
+          </span>
+          {' '}
+          <span style={{ color: 'var(--text-secondary)' }}>
+            ({mode === 'live' ? '🟢 HW' : '🟡 Mock'})
+          </span>
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{
+          background: color,
+          color: '#fff',
+          borderRadius: 8,
+          padding: '12px 18px',
+          fontSize: 20,
+          fontWeight: 700,
+          minWidth: 140,
+          textAlign: 'center',
+        }}>
+          {healthState}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 200 }}>
+          {prediction != null && (
+            <div style={{ fontSize: 13, marginBottom: 4 }}>
+              Prediction class: <strong>{prediction}</strong>
+              {confidence != null && (
+                <span> (confidence: {(confidence * 100).toFixed(0)}%)</span>
+              )}
+            </div>
+          )}
+          {advice && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+              <strong>Severity:</strong> {advice.severity || 'N/A'}
+              {advice.possible_condition && (
+                <> — {advice.possible_condition}</>
+              )}
+            </div>
+          )}
+          {advice && advice.advice && (
+            <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 4 }}>
+              {advice.advice.slice(0, 200)}{advice.advice.length > 200 ? '…' : ''}
+            </div>
+          )}
+          {anomalies.length > 0 && (
+            <div style={{ fontSize: 11, color: '#ef4444' }}>
+              ⚠️ {anomalies.length} anomaly(s) detected
+            </div>
+          )}
+          {timestamp && (
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>
+              {new Date(timestamp).toLocaleTimeString()}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 

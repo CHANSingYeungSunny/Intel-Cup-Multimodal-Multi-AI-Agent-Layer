@@ -184,3 +184,15 @@ class AgentRegisterRequest(BaseModel):
 class SkillsExecuteRequest(BaseModel):
     skill_names: list[str] = Field(..., min_length=1)
     input: dict = Field(default_factory=dict)
+
+
+class LiveInferenceResponse(BaseModel):
+    """Real-time live inference result from hardware → AI pipeline."""
+    prediction: Optional[int] = Field(None, description="Predicted health class (0/1/2)")
+    health_state: str = Field("Initializing...", description="Human-readable health state")
+    confidence: Optional[float] = Field(None, description="Model confidence (0-1)")
+    advice: Optional[dict] = Field(None, description="AI agent advice dict")
+    anomalies: list[dict] = Field(default_factory=list, description="Detected anomalies")
+    timestamp: Optional[str] = Field(None, description="ISO 8601 UTC timestamp")
+    status: str = Field("initializing", description="ok / degraded / initializing / error")
+    mode: str = Field("mock", description="live / mock")
