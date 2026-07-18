@@ -350,101 +350,45 @@ process_tick_multi():
 
 ---
 
-## Quick Start (3 Terminals)
+## Quick Start
 
-### Prerequisites
+### One Command (Windows)
 
-- Python 3.12+
-- Node.js 18+
-- PostgreSQL 16 (optional — backend runs in-memory without it)
-
-### Install
-
-```bash
-cd "C:\Users\Asus\Desktop\intel multimodal (Multi_AI_Agent_layer)"
-python -m pip install -r requirements.txt
+```powershell
+.\start_all.ps1
 ```
 
-> **Tip:** The nested Single AI Agent Layer already has a `.venv` with all dependencies.
+Opens 3 PowerShell windows: Agent `:8000` · Dashboard `:5000` · Frontend `:3000`.
 
-### Run
+If PowerShell blocks the script: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned`
 
-```bash
-# ═══════════════════════════════════════════════════════════════════
-# Terminal 1 — Multi AI Agent Backend (FastAPI :8000)
-#   Docs:  http://localhost:8000/docs
-# ═══════════════════════════════════════════════════════════════════
-cd "C:\Users\Asus\Desktop\intel multimodal (Multi_AI_Agent_layer)"
-python run.py
-
-# ═══════════════════════════════════════════════════════════════════
-# Terminal 2 — Dashboard Backend (Flask + SocketIO :5000)
-# ═══════════════════════════════════════════════════════════════════
-cd "C:\Users\Asus\Desktop\intel multimodal (Multi_AI_Agent_layer)\intel multimodal (AI_Agent_Single_layer)\intel multimodal (dashboard_and_alert_layer)\dashboard_and_alert_layer"
-set AGENT_API_URL=http://localhost:8000/api/v1
-python run.py --no-agent
-
-# ═══════════════════════════════════════════════════════════════════
-# Terminal 3 — Dashboard Frontend (React :3000)
-# ═══════════════════════════════════════════════════════════════════
-cd "C:\Users\Asus\Desktop\intel multimodal (Multi_AI_Agent_layer)\intel multimodal (AI_Agent_Single_layer)\intel multimodal (dashboard_and_alert_layer)\dashboard_and_alert_layer\dashboard\frontend"
-npm install   # first time only
-npm start
+First-time only (if no `node_modules`):
+```powershell
+cd "intel multimodal (AI_Agent_Single_layer)\intel multimodal (dashboard_and_alert_layer)\dashboard_and_alert_layer\dashboard\frontend"
+npm install
 ```
 
-> **PowerShell:** Replace `set AGENT_API_URL=...` with `$env:AGENT_API_URL="http://localhost:8000/api/v1"`
-
-Open **http://localhost:3000** — live health data streaming with AI agent advice.
-
-### Docker (backend + PostgreSQL only)
+### One Command (Linux)
 
 ```bash
-cd "C:\Users\Asus\Desktop\intel multimodal (Multi_AI_Agent_layer)"
-docker compose up --build
+./start_all.sh
 ```
 
-### Smoke Test
+### 🎮 Demo Mode
+
+```powershell
+$env:DEMO_MODE_ENABLED = "true"
+.\start_all.ps1
+```
+
+### Verify it's working
 
 ```bash
 curl http://localhost:8000/api/v1/health
-curl -X POST http://localhost:8000/api/v1/tick \
-  -H "Content-Type: application/json" \
-  -d '{"prediction":2,"subject_id":"demo","feature_vector":[0.12,-0.45,0.78]}'
-curl http://localhost:8000/api/v1/multi/agents
-curl http://localhost:8000/api/v1/mcp/status
+# → {"status":"ok","version":"2.0.0"}
 ```
 
----
-
-## Project Structure
-
-```
-Multi_AI_Agent_layer/
-├── run.py                          # Launcher
-├── config.py / database.py         # Extended config + MultiBase engine
-├── models.py / schemas.py          # Extended ORM + Pydantic schemas
-├── main.py                         # FastAPI app factory (21 endpoints)
-├── mcp_server.py                   # MCP orchestration
-├── agent_coordinator.py            # Multi-agent coordinator
-├── skills/                         # 3 skills modules
-├── tests/                          # 92 tests
-├── PROPOSAL.md / PROPOSAL_CN.md    # Full proposals
-├── Dockerfile / docker-compose.yml
-└── intel multimodal (AI_Agent_Single_layer)/   ← v1 + Dashboard + Fusion
-    ├── main.py                     # Single Agent FastAPI (11 endpoints)
-    ├── agent_orchestrator.py       # HealthAgent
-    └── intel multimodal (dashboard_and_alert_layer)/
-        ├── dashboard_and_alert_layer/
-        │   ├── run.py              # Dashboard launcher
-        │   └── dashboard/
-        │       ├── backend/        # Flask + SocketIO
-        │       └── frontend/       # React (:3000)
-        └── intel multimodal (fusion layer)/
-            ├── Fusion-Layer/       # MultimodalFusionEncoder
-            ├── intel multimodal (vision layer)/    # Swin-Tiny
-            ├── intel multimodal (audio layer)/     # AST
-            └── intel multimodal (physiological layer)/ # iTransformer
-```
+Open **http://localhost:3000**
 
 ---
 
