@@ -20,6 +20,8 @@ export const ENDPOINTS = {
   switchExperiment: (id) => `${API_BASE}/api/experiments/switch/${id}`,
   agentAdvice: `${API_BASE}/api/agent_advice`,
   liveInference: `${API_BASE}/api/live_inference`,
+  demoOverride: `${API_BASE}/api/demo/override`,
+  demoStatus: `${API_BASE}/api/demo/status`,
 };
 
 export async function fetchJSON(url) {

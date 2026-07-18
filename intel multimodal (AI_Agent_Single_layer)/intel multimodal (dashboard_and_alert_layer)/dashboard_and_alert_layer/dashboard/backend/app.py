@@ -54,6 +54,13 @@ def create_app():
     app.register_blueprint(experiment_bp)
     app.register_blueprint(agent_bp)
 
+    # Demo mode — only when explicitly enabled (env var)
+    if os.environ.get("DEMO_MODE_ENABLED", "").lower() in ("1", "true", "yes"):
+        from dashboard.backend.routes.demo_routes import demo_bp
+
+        app.register_blueprint(demo_bp)
+        print("[app] Demo Mode ENABLED — /api/demo/* routes registered")
+
     @socketio.on("connect")
     def on_connect():
         emit("system_status", _build_system_status())

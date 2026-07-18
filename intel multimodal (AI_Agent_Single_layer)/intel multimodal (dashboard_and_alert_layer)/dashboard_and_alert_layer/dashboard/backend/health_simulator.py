@@ -81,17 +81,40 @@ class HealthSimulator:
                 time.sleep(0.5)
                 continue
 
-            # Get current prediction row
-            idx = self._order[self._cursor % len(self._order)]
-            row = df.iloc[idx]
-            prediction = int(row["prediction"])
-            label = int(row["label"])
+            # ── Demo Mode Override Check ──────────────────────────────
+            # If a demo override is active, use its fixed prediction +
+            # feature_vector instead of reading from the CSV DataFrame.
+            override = None
+            try:
+                from dashboard.backend.routes.demo_routes import get_override
+                override = get_override()
+            except Exception:
+                pass  # demo routes not registered → no override
 
-            # Parse subject from filename
-            import re
-            fname = str(row["filename"])
-            subj_match = re.search(r"subject(\d+)", fname)
-            subject_id = f"subject{subj_match.group(1)}" if subj_match else "unknown"
+            if override:
+                prediction = override["prediction"]
+                label = override["label"]
+                fv = override["feature_vector"]
+                subject_id = override.get("subject_id", "demo_subject")
+                fname = override.get("filename", "demo://override")
+                # Rotate the feature vector slightly each tick so the
+                # agent sees varying data (more realistic demo).
+                import numpy as _np
+                noise = _np.random.randn(len(fv)).astype(float) * 0.05
+                fv = [float(v + n) for v, n in zip(fv, noise)]
+            else:
+                # Get current prediction row from CSV
+                idx = self._order[self._cursor % len(self._order)]
+                row = df.iloc[idx]
+                prediction = int(row["prediction"])
+                label = int(row["label"])
+                fv = row["feature_vector"]
+                # Parse subject from filename
+                import re
+                fname = str(row["filename"])
+                subj_match = re.search(r"subject(\d+)", fname)
+                subject_id = f"subject{subj_match.group(1)}" if subj_match else "unknown"
+            # ──────────────────────────────────────────────────────────
 
             # Build event payload
             payload = {
@@ -103,13 +126,12 @@ class HealthSimulator:
                 "filename": fname,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "alert_active": False,
+                "demo_override": override is not None,
             }
 
             # Feed to AlertManager
             if self._alert_manager:
                 try:
-                    # Use a small slice of feature vector as context
-                    fv = row["feature_vector"]
                     alert_result = self._alert_manager.evaluate(
                         prediction=prediction,
                         subject_id=subject_id,
@@ -128,7 +150,6 @@ class HealthSimulator:
                 try:
                     import requests
                     import json as _json
-                    fv = row["feature_vector"]
                     if isinstance(fv, str):
                         fv = _json.loads(fv)
                     resp = requests.post(
@@ -148,7 +169,9 @@ class HealthSimulator:
                     self._socketio.emit("agent_error", {"error": str(e)})
             elif self._agent:
                 try:
-                    fv = row["feature_vector"]
+                    if isinstance(fv, str):
+                        import json as _json
+                        fv = _json.loads(fv)
                     agent_advice = self._agent.process_tick(
                         prediction=prediction,
                         subject_id=subject_id,

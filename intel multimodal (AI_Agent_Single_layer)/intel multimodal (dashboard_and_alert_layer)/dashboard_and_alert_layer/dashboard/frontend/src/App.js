@@ -43,6 +43,7 @@ export default function App() {
   const [simSpeed, setSimSpeed] = useState(1);
   const [simPaused, setSimPaused] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [demoOverride, setDemoOverride] = useState(null); // null | 'healthy' | 'semi_healthy' | 'unhealthy'
 
   const initialSyncDone = useRef(false);
   useEffect(() => {
@@ -131,6 +132,25 @@ export default function App() {
     socket.emit('pause_simulation');
   };
 
+  const handleDemoOverride = useCallback(async (state) => {
+    if (state === null) {
+      // Clear override
+      try {
+        await fetch(ENDPOINTS.demoOverride, { method: 'DELETE' });
+      } catch (_) {}
+      setDemoOverride(null);
+    } else {
+      try {
+        await fetch(ENDPOINTS.demoOverride, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state }),
+        });
+        setDemoOverride(state);
+      } catch (_) {}
+    }
+  }, []);
+
   return (
     <div className="app">
       <SystemStatusBar
@@ -185,6 +205,8 @@ export default function App() {
         liveInferenceData={liveInferenceData}
         liveInferenceLoading={liveInferenceLoading}
         liveInferenceError={liveInferenceError}
+        demoOverride={demoOverride}
+        onDemoOverride={handleDemoOverride}
         socket={socket}
         onTestAlert={handleTestAlert}
       />

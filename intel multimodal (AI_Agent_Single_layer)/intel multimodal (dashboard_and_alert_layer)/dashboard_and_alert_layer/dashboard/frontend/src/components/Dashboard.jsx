@@ -30,6 +30,8 @@ export default function Dashboard({
   liveInferenceData,
   liveInferenceLoading,
   liveInferenceError,
+  demoOverride,
+  onDemoOverride,
   socket,
   onTestAlert,
 }) {
@@ -144,6 +146,13 @@ export default function Dashboard({
       <PhysioTrendChart />
       <DiseaseClassification diseaseData={diseaseData} />
       <FeatureVizPanel />
+
+      <div className="full-width">
+        <DemoControlCard
+          activeOverride={demoOverride}
+          onOverride={onDemoOverride}
+        />
+      </div>
 
       <div className="full-width">
         <LiveInferenceCard
@@ -530,6 +539,59 @@ function LiveInferenceCard({ data, loading, error }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+/** Demo Mode Control — health state override buttons for competition demo. */
+function DemoControlCard({ activeOverride, onOverride }) {
+  const states = [
+    { key: 'healthy', label: '🟢 Healthy', color: '#22c55e', desc: 'Normal vitals, clear audio' },
+    { key: 'semi_healthy', label: '🟡 Sub-healthy', color: '#eab308', desc: 'Elevated HR, mild cough' },
+    { key: 'unhealthy', label: '🔴 Unhealthy', color: '#ef4444', desc: 'High HR, low SpO₂, strong cough' },
+  ];
+
+  const isActive = (key) => activeOverride === key;
+
+  return (
+    <div className="card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+      <div className="card-header">
+        🎮 Demo Mode
+        <span style={{ float: 'right', fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>
+          {activeOverride ? `Active: ${activeOverride}` : 'Live Data'}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        {states.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => onOverride(isActive(s.key) ? null : s.key)}
+            style={{
+              flex: 1,
+              minWidth: 120,
+              padding: '8px 12px',
+              fontSize: 13,
+              fontWeight: isActive(s.key) ? 700 : 400,
+              border: isActive(s.key) ? `2px solid ${s.color}` : '1px solid var(--border)',
+              borderRadius: 8,
+              background: isActive(s.key) ? `${s.color}18` : 'transparent',
+              color: isActive(s.key) ? s.color : 'var(--text-primary)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+        {activeOverride
+          ? `Override active — simulator sends fixed ${activeOverride} data each tick. Click again to clear.`
+          : 'Click a state to override the simulator with fixed health data for demo purposes.'}
       </div>
     </div>
   );
